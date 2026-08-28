@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: glasses_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: glasses_store_db
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysqldata:/var/lib/mysql
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: glasses_nest_api
+    restart: always
+    ports:
+      - '3000:3000'
+    environment:
+      DATABASE_TYPE: mysql
+      DATABASE_HOST: mysql
+      DATABASE_PORT: 3306
+      DATABASE_USERNAME: root
+      DATABASE_PASSWORD: rootpassword
+      DATABASE_NAME: glasses_store_db
+      JWT_SECRET: super_secret_jwt_access_key_123456789!@#$%
+      JWT_EXPIRES_IN: 7d
+      REFRESH_TOKEN_SECRET: super_secret_refresh_key_987654321!@#$%
+      REFRESH_TOKEN_EXPIRES_IN: 30d
+      PORT: 3000
+    depends_on:
+      - mysql
+
+volumes:
+  mysqldata:
