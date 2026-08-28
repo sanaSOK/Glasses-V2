@@ -28,7 +28,7 @@ export class AuthService {
     private storeRepository: Repository<Store>,
     private jwtService: JwtService,
     private configService: ConfigService,
-  ) {}
+  ) { }
 
   async register(dto: RegisterDto) {
     const inputVal = (dto.usernameOrPhone || dto.email || dto.name || 'user').trim();
@@ -38,11 +38,11 @@ export class AuthService {
     const email = isEmail
       ? inputVal.toLowerCase()
       : (dto.email ? dto.email.toLowerCase() : `${inputVal.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}@glasses.local`);
-    
+
     const phone = isPhone
       ? inputVal
       : (dto.phone || undefined);
-    
+
     const name = dto.name || inputVal;
 
     const existingUser = await this.userRepository.findOne({
@@ -69,7 +69,7 @@ export class AuthService {
       createdStore = await this.storeRepository.save(createdStore);
     }
 
-    const user = this.userRepository.create({
+    const user: User = this.userRepository.create({
       name,
       email: email.toLowerCase(),
       password: hashedPassword,
@@ -78,7 +78,7 @@ export class AuthService {
       role: createdStore ? Role.STORE_ADMIN : (dto.role || Role.CUSTOMER),
     });
 
-    const savedUser = await this.userRepository.save(user);
+    const savedUser: User = await this.userRepository.save(user);
 
     if (savedUser.role === Role.CUSTOMER && savedUser.store_id) {
       const customer = this.customerRepository.create({

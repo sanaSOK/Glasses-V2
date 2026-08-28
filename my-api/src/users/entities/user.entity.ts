@@ -17,24 +17,24 @@ export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ nullable: true })
+  @Column({ type: 'int', nullable: true })
   store_id: number | null;
 
   @ManyToOne(() => Store, (store) => store.users, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'store_id' })
   store: Store | null;
 
-  @Column({ length: 100 })
+  @Column({ type: 'varchar', length: 100 })
   name: string;
 
-  @Column({ length: 150, unique: true })
+  @Column({ type: 'varchar', length: 150, unique: true })
   email: string;
 
-  @Column()
+  @Column({ type: 'varchar' })
   password: string;
 
-  @Column({ length: 30, nullable: true })
-  phone: string;
+  @Column({ type: 'varchar', length: 30, nullable: true })
+  phone: string | null;
 
   @Column({
     type: 'enum',
@@ -43,7 +43,7 @@ export class User {
   })
   role: Role;
 
-  @Column({ default: 'ACTIVE' })
+  @Column({ type: 'varchar', default: 'ACTIVE' })
   status: string;
 
   @CreateDateColumn()

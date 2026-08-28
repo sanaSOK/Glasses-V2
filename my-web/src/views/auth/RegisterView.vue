@@ -103,15 +103,25 @@ const loading = ref(false);
 async function handleRegister() {
   loading.value = true;
   try {
+    const rawVal = usernameOrPhone.value.trim();
+    const isEmail = rawVal.includes('@');
+    const computedEmail = isEmail ? rawVal.toLowerCase() : `${rawVal.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}@glasses.local`;
+    
     await auth.register({
-      usernameOrPhone: usernameOrPhone.value,
+      usernameOrPhone: rawVal,
+      name: rawVal,
+      email: computedEmail,
+      phone: rawVal,
       password: password.value,
       storeName: storeName.value,
       address: address.value,
     });
     router.push('/');
   } catch (err: any) {
-    alert(err.message || 'Registration failed');
+    const msg = Array.isArray(err.response?.data?.message)
+      ? err.response.data.message.join('; ')
+      : (err.response?.data?.message || err.message || 'Registration failed');
+    alert(msg);
   } finally {
     loading.value = false;
   }

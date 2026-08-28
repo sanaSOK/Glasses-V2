@@ -3,10 +3,10 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Role } from '../../common/enums/role.enum';
 
 export class RegisterDto {
-  @ApiProperty({ example: 'username_or_phone' })
-  @IsNotEmpty()
+  @ApiProperty({ example: 'username_or_phone', required: false })
+  @IsOptional()
   @IsString()
-  usernameOrPhone: string;
+  usernameOrPhone?: string;
 
   @ApiProperty({ example: 'password123', minLength: 6 })
   @IsNotEmpty()
