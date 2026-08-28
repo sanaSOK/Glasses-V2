@@ -15,6 +15,8 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { Role } from '../common/enums/role.enum';
 
+import { Store } from '../stores/entities/store.entity';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -22,36 +24,67 @@ export class AuthService {
     private userRepository: Repository<User>,
     @InjectRepository(Customer)
     private customerRepository: Repository<Customer>,
+    @InjectRepository(Store)
+    private storeRepository: Repository<Store>,
     private jwtService: JwtService,
     private configService: ConfigService,
   ) {}
 
   async register(dto: RegisterDto) {
+    const inputVal = (dto.usernameOrPhone || dto.email || dto.name || 'user').trim();
+    const isEmail = inputVal.includes('@');
+    const isPhone = /^[0-9+()\s-]+$/.test(inputVal) && inputVal.length >= 7;
+
+    const email = isEmail
+      ? inputVal.toLowerCase()
+      : (dto.email ? dto.email.toLowerCase() : `${inputVal.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}@glasses.local`);
+    
+    const phone = isPhone
+      ? inputVal
+      : (dto.phone || undefined);
+    
+    const name = dto.name || inputVal;
+
     const existingUser = await this.userRepository.findOne({
-      where: { email: dto.email.toLowerCase() },
+      where: [
+        { email: email.toLowerCase() },
+        ...(phone ? [{ phone }] : [])
+      ],
     });
     if (existingUser) {
-      throw new ConflictException('User with this email already exists');
+      throw new ConflictException('An account with this username, phone, or email already exists');
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
+    let createdStore: Store | null = null;
+    if (dto.storeName && dto.storeName.trim()) {
+      const slug = dto.storeName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      createdStore = this.storeRepository.create({
+        name: dto.storeName.trim(),
+        slug: `${slug}-${Date.now()}`,
+        address: dto.address || undefined,
+        phone: phone || undefined,
+      });
+      createdStore = await this.storeRepository.save(createdStore);
+    }
+
     const user = this.userRepository.create({
-      name: dto.name,
-      email: dto.email.toLowerCase(),
+      name,
+      email: email.toLowerCase(),
       password: hashedPassword,
-      phone: dto.phone,
-      store_id: dto.store_id || null,
-      role: dto.role || Role.CUSTOMER,
+      phone: phone || null,
+      store_id: createdStore ? createdStore.id : (dto.store_id || null),
+      role: createdStore ? Role.STORE_ADMIN : (dto.role || Role.CUSTOMER),
     });
 
     const savedUser = await this.userRepository.save(user);
 
-    // If registered user is CUSTOMER and store_id provided, create Customer record
     if (savedUser.role === Role.CUSTOMER && savedUser.store_id) {
       const customer = this.customerRepository.create({
         user_id: savedUser.id,
         store_id: savedUser.store_id,
+        address: dto.address || undefined,
       });
       await this.customerRepository.save(customer);
     }
@@ -72,17 +105,22 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
+    const identifier = (dto.email || '').toLowerCase().trim();
     const user = await this.userRepository.findOne({
-      where: { email: dto.email.toLowerCase() },
+      where: [
+        { email: identifier },
+        { phone: identifier },
+        { name: identifier }
+      ],
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     if (user.status !== 'ACTIVE') {
