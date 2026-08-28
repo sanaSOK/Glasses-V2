@@ -6,7 +6,6 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
 import { Category } from '../../categories/entities/category.entity';
 import { Product } from '../../products/entities/product.entity';
 import { Customer } from '../../customers/entities/customer.entity';
@@ -47,9 +46,6 @@ export class Store {
 
   @UpdateDateColumn()
   updated_at: Date;
-
-  @OneToMany(() => User, (user) => user.store)
-  users: User[];
 
   @OneToMany(() => Category, (category) => category.store)
   categories: Category[];

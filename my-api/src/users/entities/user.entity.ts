@@ -4,11 +4,8 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  ManyToOne,
   OneToOne,
-  JoinColumn,
 } from 'typeorm';
-import { Store } from '../../stores/entities/store.entity';
 import { Role } from '../../common/enums/role.enum';
 import { Customer } from '../../customers/entities/customer.entity';
 
@@ -17,24 +14,14 @@ export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'int', nullable: true })
-  store_id: number | null;
-
-  @ManyToOne(() => Store, (store) => store.users, { onDelete: 'SET NULL', nullable: true })
-  @JoinColumn({ name: 'store_id' })
-  store: Store | null;
-
-  @Column({ type: 'varchar', length: 100 })
-  name: string;
-
-  @Column({ type: 'varchar', length: 150, unique: true })
-  email: string;
-
-  @Column({ type: 'varchar' })
-  password: string;
+  @Column({ name: 'store_name', type: 'varchar', length: 100, nullable: true })
+  store_name: string | null;
 
   @Column({ type: 'varchar', length: 30, nullable: true })
   phone: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  address: string | null;
 
   @Column({
     type: 'enum',

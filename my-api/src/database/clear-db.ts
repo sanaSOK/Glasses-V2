@@ -1,6 +1,5 @@
 import { DataSource } from 'typeorm';
 import * as dotenv from 'dotenv';
-import * as bcrypt from 'bcrypt';
 import { Store } from '../stores/entities/store.entity';
 import { User } from '../users/entities/user.entity';
 import { Category } from '../categories/entities/category.entity';
@@ -48,15 +47,24 @@ const AppDataSource = new DataSource({
 });
 
 async function resetDatabaseToCustomSuperAdmin() {
-  console.log('🧹 Clearing all existing database tables...');
+  console.log('🧹 Clearing database and setting store_name column...');
   const ds = await AppDataSource.initialize();
   const queryRunner = ds.createQueryRunner();
 
   await queryRunner.connect();
-  await queryRunner.startTransaction();
 
   try {
     await queryRunner.query('SET FOREIGN_KEY_CHECKS = 0;');
+
+    // Safely drop store_id foreign key constraint and column if present
+    try {
+      await queryRunner.query('ALTER TABLE `users` DROP FOREIGN KEY `FK_98a52595c9031d60f5c8d280ca4`;');
+    } catch { }
+
+    try {
+      await queryRunner.query('ALTER TABLE `users` DROP COLUMN `store_id`;');
+      console.log('  - Dropped `store_id` column from `users` table');
+    } catch { }
 
     const tables = [
       'reviews',
@@ -82,27 +90,22 @@ async function resetDatabaseToCustomSuperAdmin() {
     }
 
     await queryRunner.query('SET FOREIGN_KEY_CHECKS = 1;');
-    await queryRunner.commitTransaction();
 
-    // Re-create Super Admin account ONLY with requested credentials
+    // Re-create Super Admin account ONLY
     const userRepo = ds.getRepository(User);
-    const hashedPassword = await bcrypt.hash('superadmin@123', 10);
     const superAdmin = userRepo.create({
-      name: '066737549',
-      email: 'superadmin@system.com',
-      password: hashedPassword,
+      store_name: 'sana_store',
       phone: '066737549',
+      address: 'https://maps.google.com/?q=Institute+of+Technology+of+Cambodia',
       role: Role.SUPER_ADMIN,
       status: 'ACTIVE',
     });
     await userRepo.save(superAdmin);
 
     console.log('\n👑 Database reset complete!');
-    console.log('Single Super Admin account created:');
+    console.log('Single Super Admin account created with store_name = super_admin:');
     console.log('  Username / Phone: 066737549');
-    console.log('  Password:         superadmin@123');
   } catch (err) {
-    await queryRunner.rollbackTransaction();
     console.error('❌ Error clearing database:', err);
   } finally {
     await queryRunner.release();

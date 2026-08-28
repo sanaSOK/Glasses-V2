@@ -8,14 +8,37 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import * as bcrypt from 'bcrypt';
 import { User } from '../users/entities/user.entity';
 import { Customer } from '../customers/entities/customer.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { Role } from '../common/enums/role.enum';
-
 import { Store } from '../stores/entities/store.entity';
+
+function sanitizeAddress(inputAddress?: string): string | null {
+  if (!inputAddress || !inputAddress.trim()) return null;
+  const addr = inputAddress.trim();
+
+  // If user inputs a Google Maps link or URL
+  if (addr.includes('google.com/maps') || addr.includes('maps.app.goo.gl') || addr.startsWith('http')) {
+    try {
+      const match = addr.match(/\/maps\/(?:dir\/[^\/]*\/|place\/)([^\/@\?]+)/i) || addr.match(/\?q=([^&]+)/i);
+      if (match && match[1]) {
+        return `https://maps.google.com/?q=${match[1]}`;
+      }
+      if (addr.includes('maps.app.goo.gl')) {
+        return addr;
+      }
+      const cleanUrl = addr.split('?')[0].split('/data=')[0];
+      return cleanUrl;
+    } catch {
+      return addr;
+    }
+  }
+
+  // Convert plain text address to direct short Google Maps link
+  return `https://maps.google.com/?q=${encodeURIComponent(addr)}`;
+}
 
 @Injectable()
 export class AuthService {
@@ -28,34 +51,22 @@ export class AuthService {
     private storeRepository: Repository<Store>,
     private jwtService: JwtService,
     private configService: ConfigService,
-  ) { }
+  ) {}
 
   async register(dto: RegisterDto) {
-    const inputVal = (dto.usernameOrPhone || dto.email || dto.name || 'user').trim();
-    const isEmail = inputVal.includes('@');
-    const isPhone = /^[0-9+()\s-]+$/.test(inputVal) && inputVal.length >= 7;
-
-    const email = isEmail
-      ? inputVal.toLowerCase()
-      : (dto.email ? dto.email.toLowerCase() : `${inputVal.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}@glasses.local`);
-
-    const phone = isPhone
-      ? inputVal
-      : (dto.phone || undefined);
-
-    const name = dto.name || inputVal;
+    const identifier = (dto.usernameOrPhone || dto.name || dto.phone || 'user').trim();
 
     const existingUser = await this.userRepository.findOne({
       where: [
-        { email: email.toLowerCase() },
-        ...(phone ? [{ phone }] : [])
+        { store_name: identifier },
+        { phone: identifier }
       ],
     });
     if (existingUser) {
-      throw new ConflictException('An account with this username, phone, or email already exists');
+      throw new ConflictException('An account with this username or phone already exists');
     }
 
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const cleanAddress = sanitizeAddress(dto.address);
 
     let createdStore: Store | null = null;
     if (dto.storeName && dto.storeName.trim()) {
@@ -63,28 +74,28 @@ export class AuthService {
       createdStore = this.storeRepository.create({
         name: dto.storeName.trim(),
         slug: `${slug}-${Date.now()}`,
-        address: dto.address || undefined,
-        phone: phone || undefined,
+        address: cleanAddress || undefined,
+        phone: identifier,
       });
       createdStore = await this.storeRepository.save(createdStore);
     }
 
+    const storeNameVal = createdStore ? createdStore.name : identifier;
+
     const user: User = this.userRepository.create({
-      name,
-      email: email.toLowerCase(),
-      password: hashedPassword,
-      phone: phone || null,
-      store_id: createdStore ? createdStore.id : (dto.store_id || null),
+      store_name: storeNameVal,
+      phone: identifier,
+      address: cleanAddress,
       role: createdStore ? Role.STORE_ADMIN : (dto.role || Role.CUSTOMER),
     });
 
     const savedUser: User = await this.userRepository.save(user);
 
-    if (savedUser.role === Role.CUSTOMER && savedUser.store_id) {
+    if (savedUser.role === Role.CUSTOMER && createdStore) {
       const customer = this.customerRepository.create({
         user_id: savedUser.id,
-        store_id: savedUser.store_id,
-        address: dto.address || undefined,
+        store_id: createdStore.id,
+        address: cleanAddress || undefined,
       });
       await this.customerRepository.save(customer);
     }
@@ -95,31 +106,25 @@ export class AuthService {
       message: 'Registration successful',
       user: {
         id: savedUser.id,
-        name: savedUser.name,
-        email: savedUser.email,
+        name: savedUser.store_name,
+        store_name: savedUser.store_name,
+        address: savedUser.address,
         role: savedUser.role,
-        storeId: savedUser.store_id,
       },
       ...tokens,
     };
   }
 
   async login(dto: LoginDto) {
-    const identifier = (dto.email || '').toLowerCase().trim();
+    const identifier = (dto.usernameOrPhone || dto.email || '').trim();
     const user = await this.userRepository.findOne({
       where: [
-        { email: identifier },
-        { phone: identifier },
-        { name: identifier }
+        { store_name: identifier },
+        { phone: identifier }
       ],
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    const isPasswordValid = await bcrypt.compare(dto.password, user.password);
-    if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -133,10 +138,10 @@ export class AuthService {
       message: 'Login successful',
       user: {
         id: user.id,
-        name: user.name,
-        email: user.email,
+        name: user.store_name,
+        store_name: user.store_name,
+        address: user.address,
         role: user.role,
-        storeId: user.store_id,
       },
       ...tokens,
     };
@@ -162,22 +167,20 @@ export class AuthService {
   async getProfile(userId: number) {
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      relations: { store: true, customer: true },
+      relations: { customer: true },
     });
     if (!user) {
       throw new NotFoundException('User profile not found');
     }
 
-    const { password, ...result } = user;
-    return result;
+    return user;
   }
 
   private async generateTokens(user: User) {
     const payload = {
       userId: user.id,
-      email: user.email,
+      store_name: user.store_name,
       role: user.role,
-      storeId: user.store_id,
     };
 
     const accessToken = this.jwtService.sign(payload);

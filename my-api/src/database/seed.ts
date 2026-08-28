@@ -1,5 +1,4 @@
 import { DataSource } from 'typeorm';
-import * as bcrypt from 'bcrypt';
 import { User } from '../users/entities/user.entity';
 import { Role } from '../common/enums/role.enum';
 
@@ -46,14 +45,12 @@ export async function runSeed(dataSource: DataSource) {
   await clearAllTables(dataSource);
 
   const userRepo = dataSource.getRepository(User);
-  const hashedPassword = await bcrypt.hash('superadmin@123', 10);
 
-  // Create Super Admin with exact requested credentials
+  // Create Super Admin with store_name = super_admin
   const superAdmin = userRepo.create({
-    name: '066737549',
-    email: 'superadmin@system.com',
-    password: hashedPassword,
+    store_name: 'sana_store',
     phone: '066737549',
+    address: 'https://maps.google.com/?q=Institute+of+Technology+of+Cambodia',
     role: Role.SUPER_ADMIN,
     status: 'ACTIVE',
   });
@@ -61,5 +58,4 @@ export async function runSeed(dataSource: DataSource) {
   await userRepo.save(superAdmin);
   console.log('👑 Super Admin created successfully!');
   console.log('  Username / Phone: 066737549');
-  console.log('  Password:         superadmin@123');
 }

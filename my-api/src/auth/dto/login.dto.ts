@@ -1,14 +1,19 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class LoginDto {
-  @ApiProperty({ example: 'admin@sanaoptical.com, username, or phone number' })
-  @IsNotEmpty()
+  @ApiProperty({ example: '066737549', required: false })
+  @IsOptional()
   @IsString()
-  email: string;
+  usernameOrPhone?: string;
 
-  @ApiProperty({ example: 'password123' })
-  @IsNotEmpty()
+  @ApiProperty({ example: '066737549', required: false })
+  @IsOptional()
   @IsString()
-  password: string;
+  email?: string;
+
+  @ApiProperty({ example: 'superadmin@123', required: false })
+  @IsOptional()
+  @IsString()
+  password?: string;
 }
