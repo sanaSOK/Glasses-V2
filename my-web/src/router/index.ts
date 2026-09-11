@@ -74,6 +74,36 @@ const routes: Array<RouteRecordRaw> = [
     meta: { requiresAuth: true, requiresSuperAdmin: true },
   },
   {
+    path: '/admin/users',
+    name: 'SuperAdminUsers',
+    component: () => import('@/views/admin/SuperAdminUsersView.vue'),
+    meta: { requiresAuth: true, requiresSuperAdmin: true },
+  },
+  {
+    path: '/admin/stores',
+    name: 'SuperAdminStores',
+    component: () => import('@/views/admin/SuperAdminStoresView.vue'),
+    meta: { requiresAuth: true, requiresSuperAdmin: true },
+  },
+  {
+    path: '/admin/products',
+    name: 'SuperAdminProducts',
+    component: () => import('@/views/admin/SuperAdminProductsView.vue'),
+    meta: { requiresAuth: true, requiresSuperAdmin: true },
+  },
+  {
+    path: '/admin/orders',
+    name: 'SuperAdminOrders',
+    component: () => import('@/views/admin/SuperAdminOrdersView.vue'),
+    meta: { requiresAuth: true, requiresSuperAdmin: true },
+  },
+  {
+    path: '/admin/prescriptions',
+    name: 'SuperAdminPrescriptions',
+    component: () => import('@/views/admin/SuperAdminPrescriptionsView.vue'),
+    meta: { requiresAuth: true, requiresSuperAdmin: true },
+  },
+  {
     path: '/store-admin',
     name: 'StoreAdminDashboard',
     component: () => import('@/views/store-admin/StoreAdminDashboard.vue'),

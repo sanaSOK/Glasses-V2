@@ -29,10 +29,15 @@
 
     <!-- Brand Name Text -->
     <div class="flex flex-col leading-none">
-      <span class="font-black text-2xl tracking-tighter uppercase text-slate-900">
-        BRIGHT<span class="text-sky-600">EYES</span>
+      <span class="font-black text-2xl tracking-tighter uppercase" :class="isDark ? 'text-white' : 'text-slate-900'">
+        BRIGHT<span class="text-sky-500">EYES</span>
       </span>
-      <span class="text-[9px] font-extrabold uppercase tracking-widest text-slate-500">Optical E-Commerce</span>
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+defineProps<{
+  isDark?: boolean;
+}>();
+</script>

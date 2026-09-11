@@ -41,12 +41,12 @@ export async function clearAllTables(dataSource: DataSource) {
 }
 
 export async function runSeed(dataSource: DataSource) {
-  console.log('🌱 Starting clean reset (Super Admin Only)...');
+  console.log('🌱 Starting clean reset (Super Admin & Admin Management)...');
   await clearAllTables(dataSource);
 
   const userRepo = dataSource.getRepository(User);
 
-  // Create Super Admin with store_name = super_admin
+  // 1. Create Global Super Admin
   const superAdmin = userRepo.create({
     store_name: 'sana_store',
     phone: '066737549',
@@ -55,7 +55,35 @@ export async function runSeed(dataSource: DataSource) {
     status: 'ACTIVE',
   });
 
-  await userRepo.save(superAdmin);
-  console.log('👑 Super Admin created successfully!');
-  console.log('  Username / Phone: 066737549');
+  // 2. Create Store Admins
+  const storeAdmin1 = userRepo.create({
+    store_name: 'Phnom Penh Optics',
+    phone: '012345678',
+    address: 'Monivong Blvd, Phnom Penh',
+    role: Role.STORE_ADMIN,
+    status: 'ACTIVE',
+  });
+
+  const storeAdmin2 = userRepo.create({
+    store_name: 'Siem Reap EyeCare',
+    phone: '098765432',
+    address: 'Pub Street Area, Siem Reap',
+    role: Role.STORE_ADMIN,
+    status: 'ACTIVE',
+  });
+
+  const storeStaff = userRepo.create({
+    store_name: 'Phnom Penh Optics',
+    phone: '011223344',
+    address: 'Monivong Blvd, Phnom Penh',
+    role: Role.STAFF,
+    status: 'ACTIVE',
+  });
+
+  await userRepo.save([superAdmin, storeAdmin1, storeAdmin2, storeStaff]);
+
+  console.log('👑 Super Admin & Store Admins seeded successfully!');
+  console.log('  👑 Super Admin Username / Phone: 066737549 (Global Authority)');
+  console.log('  🏬 Store Admin 1 Phone: 012345678 (Phnom Penh Optics)');
+  console.log('  🏬 Store Admin 2 Phone: 098765432 (Siem Reap EyeCare)');
 }
